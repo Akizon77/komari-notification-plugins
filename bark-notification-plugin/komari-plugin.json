@@ -1,0 +1,31 @@
+{
+  "name": {
+    "zh_CN": "Bark 通知",
+    "zh_TW": "Bark 通知",
+    "en": "Bark Notification",
+    "ja_JP": "Bark 通知",
+    "id_ID": "Notifikasi Bark"
+  },
+  "short": "bark-notification-plugin",
+  "description": {
+    "zh_CN": "通过 Bark 发送 Komari 通知",
+    "zh_TW": "透過 Bark 傳送 Komari 通知",
+    "en": "Send Komari notifications through Bark",
+    "ja_JP": "Bark で Komari 通知を送信します",
+    "id_ID": "Kirim notifikasi Komari melalui Bark"
+  },
+  "author": {
+    "zh_CN": "Akizon77",
+    "zh_TW": "Akizon77",
+    "en": "Akizon77",
+    "ja_JP": "Akizon77",
+    "id_ID": "Akizon77"
+  },
+  "version": "1.0.0",
+  "komari": ">=1.6.0",
+  "entry": "script.js",
+  "icon": "icon.webp",
+  "permissions": {
+    "timeout": 30
+  }
+}
