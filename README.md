@@ -37,11 +37,19 @@
 
 每个 ZIP 的根目录均包含 `komari-plugin.json`、`script.js` 和 `icon.webp`，可直接由 Komari 插件安装器读取。
 
+### 邮件加密设置
+
+- 使用 587 等 STARTTLS 端口时，可以保持“启用 SSL”关闭；插件会在服务器声明支持 STARTTLS 时自动升级到 TLS，然后进行认证和发送邮件。
+- 开启“启用 SSL”时，465 端口使用隐式 TLS，其他端口强制使用 STARTTLS。
+- STARTTLS 被拒绝或 TLS 握手失败时，发送会报错，不会回退到明文认证。关闭“启用 SSL”且服务器未声明支持 STARTTLS 时，保留原有明文 SMTP 行为。
+
 ### 从源码构建
 
 需要 Node.js 18 或更高版本：
 
 ```bash
+npm ci
+npm test
 npm run build
 ```
 
@@ -90,11 +98,19 @@ A collection of standalone notification channel plugins for Komari. These plugin
 
 Each ZIP contains `komari-plugin.json`, `script.js`, and `icon.webp` at its root and can be installed directly by Komari.
 
+### Email Transport Security
+
+- For STARTTLS ports such as 587, "Enable SSL" can remain off. The plugin automatically upgrades to TLS when the server advertises STARTTLS, before authenticating or sending mail.
+- With "Enable SSL" on, port 465 uses implicit TLS and other ports require STARTTLS.
+- A rejected STARTTLS command or failed TLS handshake fails delivery without falling back to plaintext authentication. With "Enable SSL" off and no advertised STARTTLS support, the existing plaintext SMTP behavior is preserved.
+
 ### Build from Source
 
 Node.js 18 or newer is required:
 
 ```bash
+npm ci
+npm test
 npm run build
 ```
 

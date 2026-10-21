@@ -92,6 +92,13 @@ const configuration = {
       },
       type: "switch",
       default: false,
+      help: {
+        zh_CN: "启用时，465 端口使用隐式 TLS，其他端口强制使用 STARTTLS；关闭时，若服务器支持则自动使用 STARTTLS",
+        zh_TW: "啟用時，465 連接埠使用隱式 TLS，其他連接埠強制使用 STARTTLS；關閉時，若伺服器支援則自動使用 STARTTLS",
+        en: "When enabled, port 465 uses implicit TLS and other ports require STARTTLS. When disabled, STARTTLS is used if advertised by the server",
+        ja_JP: "有効時はポート 465 で暗黙的 TLS、その他のポートで STARTTLS を必須にします。無効時もサーバーが対応していれば STARTTLS を使用します",
+        id_ID: "Jika diaktifkan, port 465 menggunakan TLS implisit dan port lain mewajibkan STARTTLS. Jika dinonaktifkan, STARTTLS digunakan bila ditawarkan server",
+      },
     },
     {
       key: "use_login_auth",
@@ -124,9 +131,18 @@ class SMTPClient {
     this.waiters = [];
     this.failure = null;
     socket.setEncoding("utf8");
-    socket.on("data", (chunk) => this.receive(chunk));
-    socket.on("error", (error) => this.fail(error));
-    socket.on("close", () => this.fail(new Error("SMTP connection closed")));
+    this.onData = (chunk) => this.receive(chunk);
+    this.onError = (error) => this.fail(error);
+    this.onClose = () => this.fail(new Error("SMTP connection closed"));
+    socket.on("data", this.onData);
+    socket.on("error", this.onError);
+    socket.on("close", this.onClose);
+  }
+
+  detach() {
+    this.socket.removeListener("data", this.onData);
+    this.socket.removeListener("error", this.onError);
+    this.socket.removeListener("close", this.onClose);
   }
 
   receive(chunk) {
@@ -192,20 +208,38 @@ class SMTPClient {
 
 function waitFor(socket, event) {
   return new Promise((resolve, reject) => {
-    socket.once(event, resolve);
-    socket.once("error", reject);
+    const cleanup = () => {
+      socket.removeListener(event, onReady);
+      socket.removeListener("error", onError);
+      socket.removeListener("close", onClose);
+    };
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error) => {
+      cleanup();
+      reject(error);
+    };
+    const onClose = () => onError(new Error("SMTP connection closed"));
+    socket.once(event, onReady);
+    socket.once("error", onError);
+    socket.once("close", onClose);
   });
 }
 
 async function connectSMTP(host, port, useSSL) {
-  if (useSSL && port === 465) {
-    const socket = tls.connect({ host, port, servername: host });
-    await waitFor(socket, "secureConnect");
+  const implicitTLS = useSSL && port === 465;
+  const socket = implicitTLS
+    ? tls.connect({ host, port, servername: host })
+    : net.connect({ host, port });
+  try {
+    await waitFor(socket, implicitTLS ? "secureConnect" : "connect");
     return new SMTPClient(socket);
+  } catch (error) {
+    if (typeof socket.destroy === "function") socket.destroy();
+    throw error;
   }
-  const socket = net.connect({ host, port });
-  await waitFor(socket, "connect");
-  return new SMTPClient(socket);
 }
 
 function addressOnly(value) {
@@ -275,11 +309,14 @@ async function sendEmail(notification, config) {
   let client = await connectSMTP(host, port, Boolean(config.use_ssl));
   try {
     await client.expect([220]);
-    await client.hello();
+    const hello = await client.hello();
+    const supportsSTARTTLS = hello.lines.slice(1).some((line) => /^250[ -]STARTTLS(?:\s|$)/i.test(line));
 
-    if (config.use_ssl && port !== 465) {
+    if (!(config.use_ssl && port === 465) && (config.use_ssl || supportsSTARTTLS)) {
       await client.command("STARTTLS", [220]);
+      client.detach();
       const secureSocket = tls.connect({ socket: client.socket, servername: host });
+      client.socket = secureSocket;
       await waitFor(secureSocket, "secureConnect");
       client = new SMTPClient(secureSocket);
       await client.hello();

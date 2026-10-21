@@ -4,9 +4,13 @@
   "private": true,
   "description": "Standalone notification channel plugins for Komari",
   "scripts": {
+    "test": "node --test tests/email-notification-plugin.test.mjs",
     "build": "node scripts/build.mjs"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "selfsigned": "^5.5.0"
   }
 }
